@@ -11,31 +11,51 @@
 #define MAX_MSG_SIZE   1000
 #define MAX_NNAME_SIZE 50
 
+#define BCAST_IP "255.255.255.255"
+
 #define IPV4_REG \
 "^((25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])$"
-
 #define PORT_REG \
 "^(6553[0-6]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[0-5]?[0-9]{0,4})$"
 
-#define REM_NEWLINE(msg, len) { if (len > 0 && '\n' == msg[len - 1]) msg[len - 1] = '\0'; }
-#define EHDLR(msg) { perror(msg); exit(EXIT_FAILURE); }
+#define REM_NEWLINE(msg, len) \
+{ if (len > 0 && '\n' == msg[len - 1]) msg[len - 1] = '\0'; }
+#define EHDLR(msg) \
+{ perror(msg); exit(EXIT_FAILURE); }
 
-char           *ip_str;
+// set necessary global variables
+int            sockfd;
+char           nickname[MAX_NNAME_SIZE];
+char           ip_str[INET_ADDRSTRLEN];
 unsigned short port;
-char           *nickname;
 
-// returns heap allocated string with user nickname
-// nickname must be freed by caller
-char*
-get_nickname()
+int
+socket_init()
 {
-	char *nickname = (char *)malloc(MAX_NNAME_SIZE * sizeof(char));
+	int sockfd = socket(PF_INET, SOCK_DGRAM, 0);
+	if (-1 == sockfd)
+		EHDLR("main: socket");
+	
+	// make socket broadcast
+	int so_bcast = 1;
+	if (-1 == setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &so_bcast,
+	           			 sizeof so_bcast))
+		EHDLR("sender: setsockopt");
 
-	// get user nickname
-	fgets(nickname, MAX_NNAME_SIZE, stdin);
-	REM_NEWLINE(nickname, strlen(nickname));
+	struct sockaddr_in recv_addr;
 
-	return nickname;
+	// fill recv_addr
+	memset(&recv_addr, 0, sizeof(recv_addr));
+	recv_addr.sin_family = AF_INET;
+	recv_addr.sin_port = htons(port);
+	// addr.sin_addr.s_addr = INADDR_ANY;
+	if (-1 == inet_pton(AF_INET, ip_str, &(recv_addr.sin_addr)))
+		EHDLR("socket_init: inet_pton");
+	
+	if (-1 == bind(sockfd, (struct sockaddr *)&recv_addr, sizeof(recv_addr)))
+		EHDLR("main: bind");
+	
+	return sockfd;
 }
 
 // check if string match to specific template
@@ -71,108 +91,85 @@ recv_msg(void *arg)
 	// to template like <nickname>: <message>
 	char msg[MAX_MSG_SIZE + MAX_NNAME_SIZE + 2];
 	
-	int recv_socket = socket(PF_INET, SOCK_DGRAM, 0);
-	if (-1 == recv_socket)
-		EHDLR("reciever: socket");
-	
-	struct sockaddr_in addr;
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	// addr.sin_addr.s_addr = INADDR_ANY;
-	if (0 == inet_pton(AF_INET, ip_str, &(addr.sin_addr))) {
-		fprintf(stderr, "Error: IPv4 address is invalid!\n");
-		exit(EXIT_FAILURE);
-	}
-	
-	if (-1 == bind(recv_socket, (struct sockaddr *)&addr, sizeof(addr)))
-		EHDLR("reciever: bind");
-
 	ssize_t            msglen;
 	struct sockaddr_in sender_addr;
 	socklen_t          sender_addr_len = sizeof(sender_addr);
 
-	memset(&addr, 0, sizeof(addr));
-	
 	char sender_ip_str[INET_ADDRSTRLEN];
 	
+	// to size of ": exit" + sizeof nickname
+	char exit_expr[strlen(nickname) + 6];
+	sprintf(exit_expr, "%s: exit", nickname);
+	
 	while (true) {
-		msglen = recvfrom(recv_socket, msg, MAX_MSG_SIZE - 1, 0,
+		msglen = recvfrom(sockfd, msg, MAX_MSG_SIZE - 1, 0,
 		                  (struct sockaddr *)&sender_addr,
 		                  &sender_addr_len);
 		if (-1 == msglen)
-			EHDLR("reciever: recvfrom");
+			EHDLR("recv_msg: recvfrom");
 
 		msg[msglen] = '\0';
 
-		// check for exit expression
-		if (!strcmp(msg, "exit"))
-			break;;
-
-		// get ip and port and print them with message
+		// get ip string
 		if (NULL == inet_ntop(AF_INET, &(sender_addr.sin_addr),
 			                  sender_ip_str, INET_ADDRSTRLEN))
-			EHDLR("reciever: inet_ntop");
-			
+			EHDLR("recv_msg: inet_ntop");
+		
+		if (!strcmp(msg, exit_expr))
+			break;
+		
 		printf(" IP: [%s] Port: [%hu]\n %s\n",
-			   sender_ip_str, ntohs(sender_addr.sin_port), msg);
+		   	   sender_ip_str, ntohs(sender_addr.sin_port), msg);
 	}
 
-	close(recv_socket);
-	
 	return NULL;
 }
 
 void*
 send_msg(void *arg)
 {
-	// create socket to send information
-	int send_socket = socket(PF_INET, SOCK_DGRAM, 0);
-	if (-1 == send_socket)
-		EHDLR("sender: socket");
-
-	// make socket broadcast
-	int so_bcast = 1;
-	if (-1 == setsockopt(send_socket, SOL_SOCKET, SO_BROADCAST, &so_bcast,
-	           			 sizeof so_bcast))
-		EHDLR("sender: setsockopt");
-
-	const char *ip_bcast_str = "255.255.255.255";
-
+	struct sockaddr_in bcast_addr;
+	
 	// fill sockaddr_in struct to store ip and port
-	struct sockaddr_in addr;
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	// since inet_aton isnt set errno value
-	if (0 == inet_pton(AF_INET, ip_bcast_str, &(addr.sin_addr))) {
-		fprintf(stderr, "Error: IPv4 address is invalid!\n");
-		exit(EXIT_FAILURE);
-	}
+	memset(&bcast_addr, 0, sizeof(bcast_addr));
+	bcast_addr.sin_family = AF_INET;
+	bcast_addr.sin_port = htons(port);
+	if (-1 == inet_pton(AF_INET, BCAST_IP, &(bcast_addr.sin_addr)))
+		EHDLR("send_msg: inet_pton");
 
+	
+	
 	// just to msg size
-	char msg[MAX_MSG_SIZE];
+	char msg_content[MAX_MSG_SIZE];
 	// to template like <nickname>: <message>
-	char msgtosend[MAX_MSG_SIZE + MAX_NNAME_SIZE + 2];
+	char msg[MAX_MSG_SIZE + MAX_NNAME_SIZE + 2];
 
-	// sending msges
 	ssize_t sendmsglen;
-	while (true) {
-		fgets(msg, MAX_MSG_SIZE, stdin);
-		REM_NEWLINE(msg, strlen(msg));
 
-		sprintf(msgtosend, "%s: %s", nickname, msg);
+	// to template like: <nickname> was joined in chat!
+	char hello_msg[strlen(nickname) + strlen(" was joined in chat!")];
+	sprintf(hello_msg, "%s %s", nickname, "was joined in chat!");
+	
+	// hello message to chat
+	sendmsglen = sendto(sockfd, hello_msg, strlen(hello_msg), 0,
+	                    (struct sockaddr *)&bcast_addr, sizeof(bcast_addr));
+	if (-1 == sendmsglen)
+		EHDLR("send_msg: hello sendto");
+	
+	while (true) {
+		fgets(msg_content, MAX_MSG_SIZE, stdin);
+		REM_NEWLINE(msg_content, strlen(msg_content));
+
+		sprintf(msg, "%s: %s", nickname, msg_content);
 		
-		sendmsglen = sendto(send_socket, msgtosend, strlen(msgtosend), 0,
-		                    (struct sockaddr *)&addr, sizeof(addr));
+		sendmsglen = sendto(sockfd, msg, strlen(msg), 0,
+		                    (struct sockaddr *)&bcast_addr, sizeof(bcast_addr));
 		if (-1 == sendmsglen)
 			EHDLR("sender: sendto");
 	
-		if (!strcmp(msg, "exit"))
+		if (!strcmp(msg_content, "exit"))
 			break;
 	}
-
-	close(send_socket);
 	
 	return NULL;
 }
@@ -197,27 +194,31 @@ main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	// send global variables ip_str and port
-	ip_str = argv[1];
+	// set global variables ip_str and port
+	strncpy(ip_str, argv[1], INET_ADDRSTRLEN);
 	port = (unsigned short)atoi(argv[2]);
 
-	pthread_t recv_th, send_th;
-
+	// init broadcast socket
+	sockfd = socket_init();
+	
 	printf("Welcome to IPv4 chat!\n");
 
-	// set global variable nick
+	// set nickname global variable
 	printf("Type your nickname [255 characters max]: ");
-	nickname = get_nickname();
+	fgets(nickname, MAX_NNAME_SIZE, stdin);
+	REM_NEWLINE(nickname, strlen(nickname));
 
 	printf("\nNow you can type your messages below (to stop type \"exit\")\n\n");
 
+	pthread_t recv_th, send_th;
+	
 	pthread_create(&recv_th, NULL, recv_msg, NULL);
 	pthread_create(&send_th, NULL, send_msg, NULL);
 
 	pthread_join(recv_th, NULL);
 	pthread_join(send_th, NULL);
 	
-	free(nickname);
+	close(sockfd);
 
 	return EXIT_SUCCESS;
 }
