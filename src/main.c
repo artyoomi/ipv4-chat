@@ -73,24 +73,24 @@ recv_msg(void *arg)
 	
 	int recv_socket = socket(PF_INET, SOCK_DGRAM, 0);
 	if (-1 == recv_socket)
-		EHDLR("socket");
+		EHDLR("reciever: eocket");
 	
 	struct sockaddr_in addr;
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = INADDR_ANY;
-	// if (0 == inet_pton(AF_INET, ip_str, &(addr.sin_addr))) {
-	// 	fprintf(stderr, "Error: IPv4 address is invalid!\n");
-	// 	exit(EXIT_FAILURE);
-	// }
+	// addr.sin_addr.s_addr = INADDR_ANY;
+	if (0 == inet_pton(AF_INET, ip_str, &(addr.sin_addr))) {
+		fprintf(stderr, "Error: IPv4 address is invalid!\n");
+		exit(EXIT_FAILURE);
+	}
 	
 	if (-1 == bind(recv_socket, (struct sockaddr *)&addr, sizeof(addr)))
-		EHDLR("bind");
+		EHDLR("reciever: bind");
 
 	ssize_t            msglen;
 	struct sockaddr_in sender_addr;
-	socklen_t          sender_addr_len;
+	socklen_t          sender_addr_len = sizeof(sender_addr);
 
 	memset(&addr, 0, sizeof(addr));
 	
@@ -101,7 +101,7 @@ recv_msg(void *arg)
 		                  (struct sockaddr *)&sender_addr,
 		                  &sender_addr_len);
 		if (-1 == msglen)
-			EHDLR("recvfrom");
+			EHDLR("reciever: recvfrom");
 
 		msg[msglen] = '\0';
 
@@ -110,9 +110,9 @@ recv_msg(void *arg)
 			break;;
 
 		// get ip and port and print them with message
-		if (NULL == inet_ntop(AF_INET, &sender_addr,
+		if (NULL == inet_ntop(AF_INET, &(sender_addr.sin_addr),
 			                  sender_ip_str, INET_ADDRSTRLEN))
-			EHDLR("inet_ntop");
+			EHDLR("reciever: inet_ntop");
 			
 		printf(" IP: [%s] Port: [%hu]\n %s\n",
 			   sender_ip_str, ntohs(sender_addr.sin_port), msg);
@@ -129,13 +129,13 @@ send_msg(void *arg)
 	// create socket to send information
 	int send_socket = socket(PF_INET, SOCK_DGRAM, 0);
 	if (-1 == send_socket)
-		EHDLR("socket");
+		EHDLR("sender: socket");
 
 	// make socket broadcast
 	int so_bcast = 1;
 	if (-1 == setsockopt(send_socket, SOL_SOCKET, SO_BROADCAST, &so_bcast,
 	           			 sizeof so_bcast))
-		EHDLR("setsockopt");
+		EHDLR("sender: setsockopt");
 
 	const char *ip_bcast_str = "255.255.255.255";
 
@@ -165,6 +165,8 @@ send_msg(void *arg)
 		
 		sendmsglen = sendto(send_socket, msgtosend, strlen(msgtosend), 0,
 		                    (struct sockaddr *)&addr, sizeof(addr));
+		if (-1 == sendmsglen)
+			EHDLR("sender: sendto");
 	
 		if (!strcmp(msg, "exit"))
 			break;
@@ -207,7 +209,7 @@ main(int argc, char *argv[])
 	printf("Type your nickname [255 characters max]: ");
 	nickname = get_nickname();
 
-	printf("\nNow you can type your messages below (to stop type \"exit\")\n");
+	printf("\nNow you can type your messages below (to stop type \"exit\")\n\n");
 
 	pthread_create(&recv_th, NULL, recv_msg, NULL);
 	pthread_create(&send_th, NULL, send_msg, NULL);

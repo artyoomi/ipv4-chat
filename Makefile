@@ -1,7 +1,7 @@
 CC := gcc
 
 CFLAGS += -g3
-CFLAGS += -Wall -Wextra -Wpedantic
+CFLAGS += -Wall -Wpedantic
 
 LDFLAGS += -lpthread
 
@@ -21,7 +21,7 @@ all: $(TARGET)
 $(TARGET): $(OBJECTS) $(HEADERS)
 	$(CC) $(CFLAGS) $^ -o $@
 
-$(OBJECTS): $(BUILDDIR)%.o: $(SRCDIR)/%.c | $(BUILDDIR)
+$(OBJECTS): $(BUILDDIR)/%.o: $(SRCDIR)/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILDDIR):
