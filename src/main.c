@@ -73,7 +73,7 @@ recv_msg(void *arg)
 	
 	int recv_socket = socket(PF_INET, SOCK_DGRAM, 0);
 	if (-1 == recv_socket)
-		EHDLR("reciever: eocket");
+		EHDLR("reciever: socket");
 	
 	struct sockaddr_in addr;
 	memset(&addr, 0, sizeof(addr));
