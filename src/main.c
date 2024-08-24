@@ -24,6 +24,17 @@ get_nickname()
 	return nickname;
 }
 
+// strdup implementation to use -std=c99 standard
+char*
+strdup(const char *s) {
+    size_t size = strlen(s) + 1;
+    char *p = malloc(size);
+    if (p) {
+        memcpy(p, s, size);
+    }
+    return p;
+}
+
 int
 main(int argc, char *argv[])
 {

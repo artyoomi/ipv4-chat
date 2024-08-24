@@ -17,7 +17,7 @@ fill_sockaddr_in(struct sockaddr_in *addr,
 		fprintf(stderr, "inet_aton: IPv4 string is invalid!\n");
 		exit(EXIT_FAILURE);
 	}
-	// addr->sin_addr.s_addr = INADDR_ANY;
+
 	addr->sin_port = htons(port);
 	addr->sin_family = AF_INET;
 }
@@ -62,7 +62,7 @@ recv_msg(void *arg)
 	// puts("Listening for incoming messages...\n\n");
 
 	while (1) {
-		msg_size = recvfrom(udp_socket, msg, MAX_MSG_SIZE, MSG_WAITALL,
+		msg_size = recvfrom(udp_socket, msg, MAX_MSG_SIZE - 1, MSG_WAITALL,
 	                        (struct sockaddr *)&src_addr, &src_addrlen);
 		if (-1 == msg_size)
 			EHDLR("recvfrom");
@@ -113,9 +113,6 @@ send_msg(void *arg)
 		printf("-> ");
 		fgets(msg, MAX_MSG_SIZE, stdin);
 		REM_NEWLINE(msg, strlen(msg));
-
-		if (!strcmp(msg, "exit"))
-			break;
 
 		// add nickname to message
 		sprintf(full_msg, "%s: %s", args.nickname, msg);
