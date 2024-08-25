@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# add launch privileges to script
-chmod u+x build.sh
-
 # install necessary packages
 sudo apt install -y build-essential
 
