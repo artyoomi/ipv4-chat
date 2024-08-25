@@ -10,14 +10,15 @@
 
 #define MAX_MSG_SIZE   1000
 #define MAX_NNAME_SIZE 50
-
 #define BCAST_IP "255.255.255.255"
 
+// defines for regular expresions
 #define IPV4_REG \
 "^((25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])$"
 #define PORT_REG \
 "^(6553[0-6]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[0-5]?[0-9]{0,4})$"
 
+// macro functions
 #define REM_NEWLINE(msg, len) \
 { if (len > 0 && '\n' == msg[len - 1]) msg[len - 1] = '\0'; }
 #define EHDLR(msg) \
@@ -48,7 +49,6 @@ socket_init()
 	memset(&recv_addr, 0, sizeof(recv_addr));
 	recv_addr.sin_family = AF_INET;
 	recv_addr.sin_port = htons(port);
-	// addr.sin_addr.s_addr = INADDR_ANY;
 	if (-1 == inet_pton(AF_INET, ip_str, &(recv_addr.sin_addr)))
 		EHDLR("socket_init: inet_pton");
 	
@@ -67,7 +67,7 @@ correctness_check(const char *str, const char *regstr)
 	char       errmsg[255];    // regexec error msg
 	
 	if (regcomp(&regex, regstr, REG_EXTENDED))
-		EHDLR("regcomp");
+		EHDLR("correctness_check: regcomp");
 
 	stat = regexec(&regex, str, 0, NULL, 0);
 	if (0 == stat) {
@@ -100,7 +100,8 @@ recv_msg(void *arg)
 	// to size of ": exit" + sizeof nickname
 	char exit_expr[strlen(nickname) + 6];
 	sprintf(exit_expr, "%s: exit", nickname);
-	
+
+	// recvieve messages loop
 	while (true) {
 		msglen = recvfrom(sockfd, msg, MAX_MSG_SIZE - 1, 0,
 		                  (struct sockaddr *)&sender_addr,
@@ -114,7 +115,7 @@ recv_msg(void *arg)
 		if (NULL == inet_ntop(AF_INET, &(sender_addr.sin_addr),
 			                  sender_ip_str, INET_ADDRSTRLEN))
 			EHDLR("recv_msg: inet_ntop");
-		
+
 		if (!strcmp(msg, exit_expr))
 			break;
 		
@@ -137,8 +138,6 @@ send_msg(void *arg)
 	if (-1 == inet_pton(AF_INET, BCAST_IP, &(bcast_addr.sin_addr)))
 		EHDLR("send_msg: inet_pton");
 
-	
-	
 	// just to msg size
 	char msg_content[MAX_MSG_SIZE];
 	// to template like <nickname>: <message>
@@ -155,7 +154,8 @@ send_msg(void *arg)
 	                    (struct sockaddr *)&bcast_addr, sizeof(bcast_addr));
 	if (-1 == sendmsglen)
 		EHDLR("send_msg: hello sendto");
-	
+
+	// send messages loop
 	while (true) {
 		fgets(msg_content, MAX_MSG_SIZE, stdin);
 		REM_NEWLINE(msg_content, strlen(msg_content));
@@ -203,7 +203,7 @@ main(int argc, char *argv[])
 	
 	printf("Welcome to IPv4 chat!\n");
 
-	// set nickname global variable
+	// get nickname and set nickname global variable
 	printf("Type your nickname [255 characters max]: ");
 	fgets(nickname, MAX_NNAME_SIZE, stdin);
 	REM_NEWLINE(nickname, strlen(nickname));
