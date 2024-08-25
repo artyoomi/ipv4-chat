@@ -6,7 +6,7 @@ To run ipv4-chat program you need:
 3) Finally! It's time to talk to your crazy...
 (Debian compatibility)
 
-Description:
+## Description:
 It is necessary to implement an IPv4 chat program that exchanges text broadcast
 (IPv4 UDP broadcast) messages over a local network segment, with copies running on other
 machines physically connected to one logical network segment.
