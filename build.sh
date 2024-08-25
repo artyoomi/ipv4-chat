@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # add launch privileges to script
-chmod u+x start_chat.sh
+chmod u+x build.sh
 
 # install necessary packages
-sudo apt install build-essential
+sudo apt install -y build-essential
 
 # build program
 make
 
-# go to build directory
-cd build
+echo "
+Program was successfully created as build/ipv4-chat!"

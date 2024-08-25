@@ -97,8 +97,8 @@ recv_msg(void *arg)
 
 	char sender_ip_str[INET_ADDRSTRLEN];
 	
-	// to size of ": exit" + sizeof nickname
-	char exit_expr[strlen(nickname) + 6];
+	// to size of ": exit" + sizeof nickname + sizeof \0
+	char exit_expr[strlen(nickname) + 7];
 	sprintf(exit_expr, "%s: exit", nickname);
 
 	// recvieve messages loop
@@ -146,7 +146,7 @@ send_msg(void *arg)
 	ssize_t sendmsglen;
 
 	// to template like: <nickname> was joined in chat!
-	char hello_msg[strlen(nickname) + strlen(" was joined in chat!")];
+	char hello_msg[strlen(nickname) + strlen(" was joined in chat!") + 1];
 	sprintf(hello_msg, "%s %s", nickname, "was joined in chat!");
 	
 	// hello message to chat
