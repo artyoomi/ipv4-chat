@@ -21,5 +21,6 @@ The program should consist of two threads (POSIX Threads):
   the end of the input, along with the entered text message and nickname, generates and sends
   UDP datagram (sendto) to broadcast IPv4 address 255.255.255.255 and port
   (specified in the command line options).
+
 Together with the program, a script should be developed, the launch of which will provide
 the necessary conditions for the execution of the program.
