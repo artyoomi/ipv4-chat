@@ -1,12 +1,16 @@
-# ipv4-chat
+# IPv4 Chat
 Hello there!
+
+### Build
 To run ipv4-chat program you need:
 1) Run "bash ./build.sh". After that executable will be created
 2) Run program with "./build/ipv4-chat" and give it IP and Port to work
 3) Finally! It's time to talk to your crazy...\
 **(Debian compatibility)**
 
-## Description:
+Program was implemented for "InfoTecs" company internship by direction "Linux Programmer and Researcher"
+
+### Task description:
 It is necessary to implement an IPv4 chat program that exchanges text broadcast
 (IPv4 UDP broadcast) messages over a local network segment, with copies running on other
 machines physically connected to one logical network segment.
